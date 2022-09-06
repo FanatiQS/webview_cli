@@ -28,7 +28,9 @@
 
 // Evaluates javascript code on main thread to not cause crashes
 void js_evalOnMain(webview_t w, void* arg) {
-	webview_eval(w, (const char*)arg);
+	std::string* str = (std::string*)arg;
+	webview_eval(w, str->c_str());
+	delete str;
 }
 
 // Rejects javascript promise with error message
@@ -44,11 +46,11 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 	int readLen;
 	while ((readLen = read(fd, buf, BUFFER_LEN)) > 0) {
 		buf[readLen] = '\0';
-		std::string jsCall = "Native._nativeToJs(" +
+		std::string* jsCall = new std::string("Native._nativeToJs(" +
 			std::to_string(fd_in) +
 			",{value:[`" + buf + "`," + std::to_string(src) +
-			"],done:false});";
-		webview_dispatch(w, js_evalOnMain, (void*)jsCall.c_str());
+			"],done:false});");
+		webview_dispatch(w, js_evalOnMain, (void*)jsCall);
 	}
 
 	// Debug prints pipe closed
@@ -59,8 +61,8 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 	close((fd == fd_out) ? fd_err : fd_out);
 
 	// Sends close call to javascript
-	std::string jsCall = "Native._nativeToJs(" + std::to_string(fd_in) + ",{done:true});";
-	webview_dispatch(w, js_evalOnMain, (void*)jsCall.c_str());
+	std::string* jsCall = new std::string("Native._nativeToJs(" + std::to_string(fd_in) + ",{done:true});");
+	webview_dispatch(w, js_evalOnMain, (void*)jsCall);
 }
 
 void closeSide(int fds_in[2], int fds_out[2], int fds_err[2], int side) {
