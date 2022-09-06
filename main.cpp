@@ -274,7 +274,7 @@ webview_t createWebview() {
 		"	if (callback != null) callback(data);\n"
 		"	if (data.done) {\n"
 		"		Native._table[id] = null;\n"
-		"		native.done = true;\n"
+		"		native.closed = true;\n"
 		"	}\n"
 		"};\n"
 		"Native.prototype[Symbol.asyncIterator] = function () {\n"
