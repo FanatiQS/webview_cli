@@ -131,6 +131,9 @@ void native_open(const char *seq, const char *req, void *arg) {
 		case 0: {
 			// Debug prints command
 			DEBUG_PRINTF("Running command: %s\n", cmd.c_str());
+#ifdef DEBUG
+			fflush(stdout);
+#endif
 
 			// Redirects standard pipes to parent process
 			closeSide(fds_in, fds_out, fds_err, 0);
