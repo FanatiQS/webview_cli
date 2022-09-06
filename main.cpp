@@ -1,4 +1,4 @@
-#include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS
+#include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS, atoi
 #include <stdio.h> // printf
 
 #include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t
@@ -153,15 +153,19 @@ void native_open(const char *seq, const char *req, void *arg) {
 void native_write(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
-	std::string fd_str = webview::detail::json_parse(req, "", 0);
-	std::string msg = webview::detail::json_parse(req, "", 1);
-
-	if (fd_str.length() == 0 || msg.length() == 0) {
-		JS_REJECT(w, seq, "Invalid arguments");
+	// Gets file descriptor from JSON arguments
+	int fd = atoi(webview::detail::json_parse(req, "", 0).c_str());
+	if (fd == 0) {
+		JS_REJECT(w, seq, "Invalid argument: fd");
 		return;
 	}
 
-	int fd = std::stoi(fd_str);
+	// Gets system command from JSON arguments
+	std::string msg = webview::detail::json_parse(req, "", 1);
+	if (msg.length() == 0) {
+		JS_REJECT(w, seq, "Invalid argument: msg");
+		return;
+	}
 
 	// Debug prints file descriptor and message
 	DEBUG_PRINTF("Writing data to fd %d: `%s`\n", fd, msg.c_str());
@@ -180,28 +184,17 @@ void native_write(const char *seq, const char *req, void *arg) {
 void native_close(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
-	// Splits JSON arguments array into file descriptor elements
-	std::string fd_in_str = webview::detail::json_parse(req, "", 0);
-	std::string fd_out_str = webview::detail::json_parse(req, "", 1);
-	std::string fd_err_str = webview::detail::json_parse(req, "", 2);
+	// Gets file descriptors from JSON arguments
+	int fd_in = atoi(webview::detail::json_parse(req, "", 0).c_str());
+	int fd_out = atoi(webview::detail::json_parse(req, "", 1).c_str());
+	int fd_err = atoi(webview::detail::json_parse(req, "", 2).c_str());
 
 	// Validates file descriptor elements existing
-	if (
-		fd_in_str.length() == 0 ||
-		fd_out_str.length() == 0 ||
-		fd_err_str.length() == 0
-	) {
+	if (fd_in == 0 || fd_out == 0 || fd_err == 0) {
 		JS_REJECT(w, seq, "Invalid arguments");
 		DEBUG_PRINTF("Invalid arguments\n");
 		return;
 	}
-
-	// Parses JSON file descriptors
-	int fd_in = std::stoi(fd_in_str);
-	int fd_out = std::stoi(fd_out_str);
-	int fd_err = std::stoi(fd_err_str);
-
-	// Validates parsed file descriptors
 
 	// Debug prints file descriptors
 	DEBUG_PRINTF("Closing fds: %d, %d, %d\n", fd_in, fd_out, fd_err);
