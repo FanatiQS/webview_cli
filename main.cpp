@@ -17,6 +17,7 @@
 
 
 
+// Only enable debug prints if DEBUG macro is defined
 #ifdef DEBUG
 #define DEBUG_PRINTF(...) do {printf(__VA_ARGS__);} while (0)
 #else
@@ -38,6 +39,7 @@ void js_evalOnMain(webview_t w, void* arg) {
 
 // Redirects pipe data to javascript
 void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err) {
+	// Reads data from pipe and sends to to javascript while pipe is open
 	char buf[BUFFER_LEN + 1];
 	int readLen;
 	while ((readLen = read(fd, buf, BUFFER_LEN)) > 0) {
@@ -50,12 +52,15 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 		webview_dispatch(w, js_evalOnMain, (void*)jsCall.c_str());
 	}
 
+	// Debug prints pipe closed
 	DEBUG_PRINTF("End of read for %d, closing fds: %d, %d, %d\n", fd, fd_in, fd_out, fd_err);
 
+	// Closes connected pipes
 	close(fd_in);
 	close(fd_out);
 	close(fd_err);
 
+	// Sends close call to javascript
 	std::string jsCall = "Native._nativeToJs(" + std::to_string(fd_in) + ",{done:true});";
 	webview_dispatch(w, js_evalOnMain, (void*)jsCall.c_str());
 }
@@ -97,18 +102,20 @@ void native_open(const char *seq, const char *req, void *arg) {
 		}
 		// Runs system call in child process with standard pipes piped to parent process
 		case 0: {
-			// Gets native command from arguments
+			// Gets native system command from arguments
 			std::string cmd = webview::detail::json_parse(req, "", 0);
 
+			// Rejects javascript promise if command did not exist
 			if (cmd.length() == 0) {
 				JS_REJECT(w, seq, "No command argument");
 				closeAll(fds_in, fds_out, fds_err);
 				exit(EXIT_FAILURE);
 			}
 
+			// Debug prints command
 			DEBUG_PRINTF("Running command: %s\n", cmd.c_str());
 
-			// Moves standard pipes to parent process
+			// Redirects standard pipes to parent process
 			closeSide(fds_in, fds_out, fds_err, 0);
 			dup2(fds_in[0], STDIN_FILENO);
 			dup2(fds_out[1], STDOUT_FILENO);
@@ -121,13 +128,16 @@ void native_open(const char *seq, const char *req, void *arg) {
 		}
 		// Reads standard pipes from child process and sends it to javascript
 		default: {
+			// Closes child side of pipes for parent
 			closeSide(fds_in, fds_out, fds_err, 1);
 
+			// Reads childs redirected standard pipes in threads to send to javascript
 			std::thread t1(&thread_pipe, w, fds_out[0], STDOUT_FILENO, fds_in[1], fds_out[0], fds_err[0]);
 			std::thread t2(&thread_pipe, w, fds_err[0], STDERR_FILENO, fds_in[1], fds_out[0], fds_err[0]);
 			t1.detach();
 			t2.detach();
 
+			// Resolves javascript promise with pipe file descriptors
 			std::string str = "[" +
 				std::to_string(fds_in[1]) + "," +
 				std::to_string(fds_out[0]) + "," +
@@ -153,13 +163,16 @@ void native_write(const char *seq, const char *req, void *arg) {
 
 	int fd = std::stoi(fd_str);
 
+	// Debug prints file descriptor and message
 	DEBUG_PRINTF("Writing data to fd %d: `%s`\n", fd, msg.c_str());
 
+	// Writes message to pipe and reject javascript promise if writing fails
 	if (write(fd, msg.c_str(), msg.length()) == -1) {
 		JS_REJECT(w, seq, "Failed to write data");
 		return;
 	}
 
+	// Resolves javascript promise if writing to pipe succeeded
 	webview_return(w, seq, 0, "");
 }
 
