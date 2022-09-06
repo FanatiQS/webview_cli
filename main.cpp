@@ -32,7 +32,7 @@ void js_evalOnMain(webview_t w, void* arg) {
 }
 
 // Rejects javascript promise with error message
-#define JS_REJECT(w, seq, msg) webview_return(w, seq, 1, "\"" msg "\"")
+#define JS_REJECT(w, seq, msg) webview_return(w, seq, 1, "new Error(\"" msg "\")")
 
 // Size of pipe read buffer
 #define BUFFER_LEN 1024
@@ -263,20 +263,14 @@ webview_t createWebview() {
 		"		this.pid = pid;\n"
 		"		Native._table[fds[0]] = this;\n"
 		"		return this;\n"
-		"	}).catch((err) => {\n"
-		"		throw new Error(err);\n"
 		"	});\n"
 		"}\n"
 		"Native.prototype.write = function (msg) {\n"
-		"	return _jsToNative_write(this.fds[0], msg).catch((err) => {\n"
-		"		throw new Error(err);\n"
-		"	});\n"
+		"	return _jsToNative_write(this.fds[0], msg);\n"
 		"};\n"
 		"Native.prototype.close = function () {\n"
 		"	if (this.closed) return;\n"
-		"	return _jsToNative_close(...this.fds).catch((err) => {\n"
-		"		throw new Error(err);\n"
-		"	});\n"
+		"	return _jsToNative_close(...this.fds);\n"
 		"};\n"
 		"Native.os = \"" JS_OS "\";\n"
 		"Native._table = Object.create(null);\n"
