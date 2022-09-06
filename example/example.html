@@ -1,0 +1,62 @@
+<button id="startExample">Run example</button>
+<input type="text" id="nameField" disabled>
+<button id="nameBtn" disabled>Submit</button>
+<button id="closeBtn" disabled>Close</button>
+<pre id="term"></pre>
+<!-- This version uses callback function -->
+<!--
+<script>
+	document.querySelector('#startExample').onclick = async function () {
+		const native = await new Native("bash ./example.sh", function ({ value, done }) {
+			if (done) {
+				document.querySelector('#term').textContent += `=== Closed ===\n`;
+				return;
+			}
+
+			if (value[1] === 2) {
+				document.querySelector('#term').textContent += "ERROR: ";
+			}
+
+			document.querySelector('#term').textContent += value[0];
+		});
+
+		document.querySelector('#nameField').disabled = false;
+		document.querySelector('#nameBtn').disabled = false;
+		document.querySelector('#nameBtn').onclick = function () {
+			native.write(document.querySelector('#nameField').value + "\n");
+		};
+		
+		document.querySelector('#closeBtn').disabled = false;
+		document.querySelector('#closeBtn').onclick = function () {
+			native.close();
+		};
+	};
+</script>
+-->
+<!-- This version uses for await loop -->
+<script>
+	document.querySelector('#startExample').onclick = async function () {
+		const native = await new Native("bash ./example.sh");
+
+		document.querySelector('#nameField').disabled = false;
+		document.querySelector('#nameBtn').disabled = false;
+		document.querySelector('#nameBtn').onclick = function () {
+			native.write(document.querySelector('#nameField').value + "\n");
+		};
+
+		document.querySelector('#closeBtn').disabled = false;
+		document.querySelector('#closeBtn').onclick = function () {
+			native.close();
+		};
+
+		for await ([msg, src] of native) {
+			if (src === 2) {
+				document.querySelector('#term').textContent += "ERROR: ";
+			}
+
+			document.querySelector('#term').textContent += msg;
+		}
+
+		document.querySelector('#term').textContent += `=== Closed ===\n`;
+	};
+</script>
