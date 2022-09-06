@@ -331,7 +331,16 @@ webview_t createWebview() {
 }
 
 int main(int argc, char** argv) {
-	// chdir(dirname(argv[0]));
+	// Change CWD to directory of executable if it is not running on a command line
+	if (
+		!isatty(STDIN_FILENO) &&
+		!isatty(STDOUT_FILENO) &&
+		!isatty(STDERR_FILENO)
+	) {
+		chdir(dirname(argv[0]));
+	}
+
+	// Set up and run webview
 	webview_t w = createWebview();
 	webview_run(w);
 	webview_destroy(w);
