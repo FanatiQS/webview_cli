@@ -107,6 +107,16 @@ void native_open(const char *seq, const char *req, void *arg) {
 		return;
 	}
 
+	// Gets native system command from arguments
+	std::string cmd = webview::detail::json_parse(req, "", 0);
+
+	// Rejects javascript promise if command did not exist
+	if (cmd.length() == 0) {
+		JS_REJECT(w, seq, "No command argument");
+		closeAll(fds_in, fds_out, fds_err);
+		return;
+	}
+
 	pid_t pid;
 	switch ((pid = fork())) {
 		// Rejects process creation if forking failed
@@ -117,16 +127,6 @@ void native_open(const char *seq, const char *req, void *arg) {
 		}
 		// Runs system call in child process with standard pipes piped to parent process
 		case 0: {
-			// Gets native system command from arguments
-			std::string cmd = webview::detail::json_parse(req, "", 0);
-
-			// Rejects javascript promise if command did not exist
-			if (cmd.length() == 0) {
-				JS_REJECT(w, seq, "No command argument");
-				closeAll(fds_in, fds_out, fds_err);
-				exit(EXIT_FAILURE);
-			}
-
 			// Debug prints command
 			DEBUG_PRINTF("Running command: %s\n", cmd.c_str());
 
