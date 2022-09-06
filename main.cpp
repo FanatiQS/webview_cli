@@ -1,7 +1,7 @@
 #include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS
 #include <stdio.h> // printf
 
-#include <unistd.h> // write, close, read, pipe, fork, dup2, chdir
+#include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t
 #include <libgen.h> // dirname
 
 #include <thread> // std::thread
@@ -92,7 +92,8 @@ void native_open(const char *seq, const char *req, void *arg) {
 		return;
 	}
 
-	switch (fork()) {
+	pid_t pid;
+	switch ((pid = fork())) {
 		// Rejects process creation if forking failed
 		case -1: {
 			closeAll(fds_in, fds_out, fds_err);
@@ -136,10 +137,11 @@ void native_open(const char *seq, const char *req, void *arg) {
 			t2.detach();
 
 			// Resolves javascript promise with pipe file descriptors
-			std::string str = "[" +
+			std::string str = "{\"fds\":[" +
 				std::to_string(fds_in[1]) + "," +
 				std::to_string(fds_out[0]) + "," +
-				std::to_string(fds_err[0]) + "]";
+				std::to_string(fds_err[0]) + "],\"pid\":" +
+				std::to_string(pid) + "}";
 			webview_return(w, seq, 0, str.c_str());
 
 			break;
@@ -243,8 +245,9 @@ webview_t createWebview() {
 		"	this.closed = false;\n"
 		"	this.fds = null;\n"
 		"	this.callback = callback;\n"
-		"	return _jsToNative_open(cmd).then((fds) => {\n"
+		"	return _jsToNative_open(cmd).then(({fds,pid}) => {\n"
 		"		this.fds = fds;\n"
+		"		this.pid = pid;\n"
 		"		Native._table[fds[0]] = this;\n"
 		"		return this;\n"
 		"	}).catch((err) => {\n"
