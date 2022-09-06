@@ -74,7 +74,11 @@ void closeAll(int fds_in[2], int fds_out[2], int fds_err[2]) {
 	closeSide(fds_in, fds_out, fds_err, 0);
 }
 
-#define PIPE_REJECT(w, seq) JS_REJECT(w, seq, "Failed to create pipes")
+#define PIPE_REJECT(w, seq)\
+	do {\
+		JS_REJECT(w, seq, "Failed to create pipes");\
+		DEBUG_PRINTF("Failed to create pipes\n");\
+	} while (0)
 
 // Creates a process that runs the cmd with standard pipes going to javascript
 void native_open(const char *seq, const char *req, void *arg) {
@@ -109,6 +113,7 @@ void native_open(const char *seq, const char *req, void *arg) {
 		case -1: {
 			closeAll(fds_in, fds_out, fds_err);
 			JS_REJECT(w, seq, "Failed to fork process");
+			DEBUG_PRINTF("Failed to fork process\n");
 		}
 		// Runs system call in child process with standard pipes piped to parent process
 		case 0: {
@@ -168,6 +173,7 @@ void native_write(const char *seq, const char *req, void *arg) {
 	int fd = atoi(webview::detail::json_parse(req, "", 0).c_str());
 	if (fd == 0) {
 		JS_REJECT(w, seq, "Invalid argument: fd");
+		DEBUG_PRINTF("Rejected write for invalid fd argument: %s\n", req);
 		return;
 	}
 
@@ -175,6 +181,7 @@ void native_write(const char *seq, const char *req, void *arg) {
 	std::string msg = webview::detail::json_parse(req, "", 1);
 	if (msg.length() == 0) {
 		JS_REJECT(w, seq, "Invalid argument: msg");
+		DEBUG_PRINTF("Rejected write for invalid msg argument: %s\n", req);
 		return;
 	}
 
@@ -184,6 +191,7 @@ void native_write(const char *seq, const char *req, void *arg) {
 	// Writes message to pipe and reject javascript promise if writing fails
 	if (write(fd, msg.c_str(), msg.length()) == -1) {
 		JS_REJECT(w, seq, "Failed to write data");
+		DEBUG_PRINTF("Failed to write to pipe: %d\n", fd);
 		return;
 	}
 
@@ -203,7 +211,7 @@ void native_close(const char *seq, const char *req, void *arg) {
 	// Validates file descriptor elements existing
 	if (fd_in == 0 || fd_out == 0 || fd_err == 0) {
 		JS_REJECT(w, seq, "Invalid arguments");
-		DEBUG_PRINTF("Invalid arguments\n");
+		DEBUG_PRINTF("Rejected close for invalid fd argument: %s\n", req);
 		return;
 	}
 
@@ -218,6 +226,7 @@ void native_close(const char *seq, const char *req, void *arg) {
 	// Rejects javascript promise if any close call failed
 	if (fd_in_closed == -1 || fd_out_closed == -1 || fd_err_closed == -1) {
 		JS_REJECT(w, seq, "Failed to close one or more pipes");
+		DEBUG_PRINTF("Failed to close one or more pipes: %d, %d, %d\n", fd_in_closed, fd_out_closed, fd_err_closed);
 		return;
 	}
 
