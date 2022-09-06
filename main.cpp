@@ -45,9 +45,8 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 	while ((readLen = read(fd, buf, BUFFER_LEN)) > 0) {
 		buf[readLen] = '\0';
 		std::string jsCall = "Native._nativeToJs(" +
-			std::to_string(fd_in) + ",{value:[" +
-			"`" + buf + "`," +
-			std::to_string(src) +
+			std::to_string(fd_in) +
+			",{value:[`" + buf + "`," + std::to_string(src) +
 			"],done:false});";
 		webview_dispatch(w, js_evalOnMain, (void*)jsCall.c_str());
 	}
@@ -57,8 +56,7 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 
 	// Closes connected pipes
 	close(fd_in);
-	close(fd_out);
-	close(fd_err);
+	close((fd == fd_out) ? fd_err : fd_out);
 
 	// Sends close call to javascript
 	std::string jsCall = "Native._nativeToJs(" + std::to_string(fd_in) + ",{done:true});";
