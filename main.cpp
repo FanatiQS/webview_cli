@@ -74,6 +74,8 @@ void closeAll(int fds_in[2], int fds_out[2], int fds_err[2]) {
 	closeSide(fds_in, fds_out, fds_err, 0);
 }
 
+#define PIPE_REJECT(w, seq) JS_REJECT(w, seq, "Failed to create pipes")
+
 // Creates a process that runs the cmd with standard pipes going to javascript
 void native_open(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
@@ -82,13 +84,22 @@ void native_open(const char *seq, const char *req, void *arg) {
 	int fds_in[2];
 	int fds_out[2];
 	int fds_err[2];
-	if (
-		pipe(fds_in) == -1 ||
-		pipe(fds_out) == -1 ||
-		pipe(fds_err) == -1
-	) {
-		JS_REJECT(w, seq, "Failed to create pipes");
-		closeAll(fds_in, fds_out, fds_err);
+	if (pipe(fds_in) == -1) {
+		PIPE_REJECT(w, seq);
+		return;
+	}
+	if (pipe(fds_out) == -1) {
+		PIPE_REJECT(w, seq);
+		close(fds_in[0]);
+		close(fds_in[1]);
+		return;
+	}
+	if (pipe(fds_err) == -1) {
+		PIPE_REJECT(w, seq);
+		close(fds_in[0]);
+		close(fds_in[1]);
+		close(fds_out[0]);
+		close(fds_out[1]);
 		return;
 	}
 
