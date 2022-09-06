@@ -84,7 +84,7 @@ void closeAll(int fds_in[2], int fds_out[2], int fds_err[2]) {
 void native_open(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
-	// Creates pipes to go between native process and javascript
+	// Creates pipes to go between system process and javascript
 	int fds_in[2];
 	int fds_out[2];
 	int fds_err[2];
@@ -107,7 +107,7 @@ void native_open(const char *seq, const char *req, void *arg) {
 		return;
 	}
 
-	// Gets native system command from arguments
+	// Gets system command from arguments
 	std::string cmd = webview::detail::json_parse(req, "", 0);
 
 	// Rejects javascript promise if command did not exist
@@ -137,7 +137,7 @@ void native_open(const char *seq, const char *req, void *arg) {
 			dup2(fds_err[1], STDERR_FILENO);
 			closeSide(fds_in, fds_out, fds_err, 1);
 
-			// Runs native system call
+			// Runs system call
 			system(cmd.c_str());
 			exit(EXIT_SUCCESS);
 		}
@@ -165,7 +165,7 @@ void native_open(const char *seq, const char *req, void *arg) {
 	}
 }
 
-// Writes data to an active native command
+// Writes data to an active system command
 void native_write(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
@@ -199,7 +199,7 @@ void native_write(const char *seq, const char *req, void *arg) {
 	webview_return(w, seq, 0, "");
 }
 
-// Closes the pipes from javascript to native
+// Closes the pipes from javascript to system command
 void native_close(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
