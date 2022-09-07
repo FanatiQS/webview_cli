@@ -2,14 +2,17 @@
 #include <stdio.h> // printf
 
 #include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t
-#include <libgen.h> // dirname
+#include <libgen.h> // dirname, basename
 
 #include <thread> // std::thread
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 #include "./webview.h"
+
+
+
+const char* json_parse(const char* str, const char* key, int index) {
+	return webview::detail::json_parse(str, key, index).c_str();
+}
 
 
 
@@ -280,7 +283,7 @@ char* readFile(const char* filePath) {
 }
 
 // Creates a webview from configuration file
-webview_t createWebview() {
+webview_t createWebview(const char* fileName) {
 	// Sets up webview and bindings between C++ and javascript
 	webview_t w = webview_create(1, NULL);
 	webview_bind(w, "_jsToNative_open", native_open, w);
@@ -333,27 +336,53 @@ webview_t createWebview() {
 	);
 
 	// Gets configurations from file
-	std::string conf = readFile("./config.json");
-	if (conf.length() == 0) {
-		printf("Unable to read config file\n");
-		exit(EXIT_FAILURE);
-	}
-	std::string windowTitle = webview::detail::json_parse(conf, "title", 0);
-	std::string windowWidth = webview::detail::json_parse(conf, "width", 0);
-	std::string windowHeight = webview::detail::json_parse(conf, "height", 0);
-	std::string htmlFileName = webview::detail::json_parse(conf, "path", 0);
+	char* conf = readFile("./config.json");
 
-	// Sets up webview window
-	webview_set_title(w, windowTitle.c_str());
-	webview_set_size(w, std::stoi(windowWidth), std::stoi(windowHeight), WEBVIEW_HINT_NONE);
-
-	// Loads html
-	std::string html = readFile(htmlFileName.c_str());
-	if (html.length() == 0) {
-		printf("Unable to read html file\n");
-		exit(EXIT_FAILURE);
+	// Sets webview window title based on config or executable file name
+	const char* windowTitle;
+	if (
+		conf != NULL &&
+		(strlen(windowTitle = json_parse(conf, "title", 0)) != 0)
+	) {
+		webview_set_title(w, windowTitle);
 	}
-	webview_set_html(w, html.c_str());
+	else {
+		webview_set_title(w, fileName);
+	}
+
+	// Sets initial webview window size
+	int windowWidth;
+	int windowHeight;
+	if (
+		conf != NULL &&
+		((windowWidth = atoi(json_parse(conf, "width", 0))) != 0) &&
+		((windowHeight = atoi(json_parse(conf, "height", 0))) != 0)
+	) {
+		webview_set_size(w, windowWidth, windowHeight, WEBVIEW_HINT_NONE);
+	}
+	else {
+		webview_set_size(w, 480, 320, WEBVIEW_HINT_NONE);
+	}
+
+	// Loads html from file
+	char* html;
+	if (
+		(conf != NULL && ((html = readFile(json_parse(conf, "path", 0))) != NULL)) ||
+		((html = readFile((std::string(fileName) + ".html").c_str())) != NULL) ||
+		((html = readFile("index.html")) != NULL)
+	) {
+		webview_set_html(w, html);
+		free(html);
+	}
+	// Loads failed to load message
+	else {
+		webview_set_html(w, "Failed to read file");
+	}
+
+	// Releases config file content memory
+	if (conf != NULL) {
+		free(conf);
+	}
 
 	return w;
 }
@@ -369,7 +398,7 @@ int main(int argc, char** argv) {
 	}
 
 	// Set up and run webview
-	webview_t w = createWebview();
+	webview_t w = createWebview(basename(argv[0]));
 	webview_run(w);
 	webview_destroy(w);
 }
