@@ -241,14 +241,42 @@ void native_close(const char *seq, const char *req, void *arg) {
 
 
 
-// Reads file to string class
-std::string readFile(const char* filePath) {
-	std::ifstream fileStream;
-	fileStream.open(filePath);
-	std::stringstream stringStream;
-	stringStream << fileStream.rdbuf();
-	std::string str = stringStream.str();
-	return str;
+// Reads file to allocated buffer
+char* readFile(const char* filePath) {
+	// Opens file
+	FILE* file = fopen(filePath, "r");
+	if (file == NULL) return NULL;
+
+	// Gets length of files content
+	if (fseek(file, 0, SEEK_END)) {
+		fclose(file);
+		return NULL;
+	}
+	size_t len = ftell(file);
+	if (len == -1) {
+		fclose(file);
+		return NULL;
+	}
+	rewind(file);
+
+	// Allocates buffer
+	char* buf = (char*)malloc(len);
+	if (buf == NULL) {
+		fclose(file);
+		return NULL;
+	}
+
+	// Reads files content to buffer
+	size_t readLen = fread(buf, 1, len, file);
+	if (readLen != len) {
+		fclose(file);
+		free(buf);
+		return NULL;
+	}
+
+	// Closes the file before returning the buffer
+	fclose(file);
+	return buf;
 }
 
 // Creates a webview from configuration file
