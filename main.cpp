@@ -1,7 +1,8 @@
-#include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS, atoi
-#include <stdio.h> // printf
+#include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS, atoi, free
+#include <stdio.h> // printf, FILE, fopen, fseek, fclose, ftell, rewind, fread
+#include <string.h> // strlen
 
-#include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t
+#include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t, isatty
 #include <libgen.h> // dirname, basename
 
 #include <thread> // std::thread
