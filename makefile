@@ -9,6 +9,7 @@ PLATFORM_DEBUG = $(PATH_DEBUG)
 CC = g++ --std=c++11 main.cpp
 CC_RELEASE = $(CC) -O3
 CC_DEBUG = $(CC) -g -Wall -pedantic -DDEBUG
+CC_FILES = webview.h main.cpp
 
 MAC_APP := $(NAME).app
 MAC_PLIST = $(MAC_APP)/Info.plist
@@ -35,13 +36,13 @@ debug: ${PLATFORM_DEBUG}
 webview.h:
 	curl -sSLo "./webview.h" "https://raw.githubusercontent.com/webview/webview/master/webview.h"
 
-${PATH_DEBUG}: webview.h
+${PATH_DEBUG}: $(CC_FILES)
 	${CC_DEBUG} ${PLATFORM_FLAGS} -o ${PATH_DEBUG}
 
-${PATH_RELEASE}: webview.h
+${PATH_RELEASE}: $(CC_FILES)
 	${CC_RELEASE} ${PLATFORM_FLAGS} -o ${PATH_RELEASE}
 
-${MAC_PATH}: webview.h
+${MAC_PATH}: $(CC_FILES)
 	mkdir $(MAC_APP)
 	echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> $(MAC_PLIST)
 	echo "<plist version=\"1.0\">" >> $(MAC_PLIST)
