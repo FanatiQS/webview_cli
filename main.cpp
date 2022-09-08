@@ -15,6 +15,10 @@ const char* json_parse(const char* str, const char* key, int index) {
 	return webview::detail::json_parse(str, key, index).c_str();
 }
 
+int json_parse_int(const char* str, const char* key, int index) {
+	return atoi(webview::detail::json_parse(str, key, index).c_str());
+}
+
 
 
 #define JS_OS "macos_x86_64"
@@ -179,7 +183,7 @@ void native_write(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
 	// Gets file descriptor from JSON arguments
-	int fd = atoi(webview::detail::json_parse(req, "", 0).c_str());
+	int fd = json_parse_int(req, "", 0);
 	if (fd == 0) {
 		JS_REJECT(w, seq, "Invalid argument: fd");
 		DEBUG_PRINTF("Rejected write for invalid fd argument: %s\n", req);
@@ -213,9 +217,9 @@ void native_close(const char *seq, const char *req, void *arg) {
 	webview_t w = (webview_t)arg;
 
 	// Gets file descriptors from JSON arguments
-	int fd_in = atoi(webview::detail::json_parse(req, "", 0).c_str());
-	int fd_out = atoi(webview::detail::json_parse(req, "", 1).c_str());
-	int fd_err = atoi(webview::detail::json_parse(req, "", 2).c_str());
+	int fd_in = json_parse_int(req, "", 0);
+	int fd_out = json_parse_int(req, "", 1);
+	int fd_err = json_parse_int(req, "", 2);
 
 	// Validates file descriptor elements existing
 	if (fd_in == 0 || fd_out == 0 || fd_err == 0) {
@@ -356,8 +360,8 @@ webview_t createWebview(const char* fileName) {
 	int windowHeight;
 	if (
 		conf != NULL &&
-		((windowWidth = atoi(json_parse(conf, "width", 0))) != 0) &&
-		((windowHeight = atoi(json_parse(conf, "height", 0))) != 0)
+		((windowWidth = json_parse_int(conf, "width", 0)) != 0) &&
+		((windowHeight = json_parse_int(conf, "height", 0)) != 0)
 	) {
 		webview_set_size(w, windowWidth, windowHeight, WEBVIEW_HINT_NONE);
 	}
