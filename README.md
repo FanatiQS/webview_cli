@@ -1,6 +1,6 @@
 # Webview CLI
 
-This utility makes it super easy to create lightweight Graphical User Interfaces (GUIs) for command line tools.
+A super easy way to create lightweight Graphical User Interfaces (GUIs) for command line tools.
 Interfaces are built in HTML with access to the command line through javascript.
 
 It does not rely on heavy dependencies like Electron, NW or NodeJS.
