@@ -54,6 +54,7 @@ void thread_pipe(webview_t w, int fd, int src, int fd_in, int fd_out, int fd_err
 	int readLen;
 	while ((readLen = read(fd, buf, BUFFER_LEN)) > 0) {
 		buf[readLen] = '\0';
+		DEBUG_PRINTF("Read data from fd %d: %s\n", fd, buf);
 		std::string* jsCall = new std::string("Native._nativeToJs(" +
 			std::to_string(fd_in) +
 			",{value:[`" + buf + "`," + std::to_string(src) +
@@ -158,6 +159,8 @@ void native_open(const char *seq, const char *req, void *arg) {
 		default: {
 			// Closes child side of pipes for parent
 			closeSide(fds_in, fds_out, fds_err, 1);
+
+			DEBUG_PRINTF("Created process %d with fds: %d %d %d\n", pid, fds_in[1], fds_out[0], fds_err[0]);
 
 			// Reads childs redirected standard pipes in threads to send to javascript
 			std::thread t1(&thread_pipe, w, fds_out[0], STDOUT_FILENO, fds_in[1], fds_out[0], fds_err[0]);
