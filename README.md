@@ -64,7 +64,7 @@ for await ([msg] of await new Native("ls")) {
 Getting data from both STDOUT and STDERR.
 
 ```js
-for await ([msg, src] of await new Native("ls invalid_directory")) {
+for await ([msg, src] of await new Native("ls; ls invalid_directory")) {
 	if (src == 2) {
 		console.error(msg);
 	}
@@ -93,7 +93,8 @@ Reading using callbacks.
 ```js
 await new Native("ls", function (data) {
 	if (data.done) return;
-	console.log(data.msg);
+	const msg = data.value[0];
+	console.log(msg);
 });
 ```
 
