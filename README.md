@@ -107,3 +107,19 @@ Close an active native process.
 const native = await new Native("ping 127.0.0.1");
 native.close();
 ```
+
+
+
+## Current working directory
+
+If the executable is launched without an attached TTY (command line), the current working directory will be the same as the parent directory of the executable.
+When launched through a TTY, the current working directory from the command line will remain.
+
+
+
+## Config file
+
+Configuration of the webview window can be done with an optional config file.
+It is a JSON file located in the current working directory and is called `config.json`.
+
+The properties of the config file are so far undocumented.
