@@ -40,3 +40,70 @@ Currently untested but might be supported.
 #### Windows
 
 Currently unsupported.
+
+
+
+## Javascript API
+The javascript API is very basic but powerful with only a single class.
+
+### Running a command
+Getting data from a native command.
+
+```js
+for await ([msg] of await new Native("ls")) {
+	console.log(msg);
+}
+```
+
+### Using both STDOUT and STDERR
+Getting data from both STDOUT and STDERR.
+
+```js
+for await ([msg, src] of await new Native("ls invalid_directory")) {
+	if (src == 2) {
+		console.error(msg);
+	}
+	else {
+		console.log(msg);
+	}
+}
+```
+
+### Write to a process
+Writing data to an active process.
+
+```js
+const native = await new Native("echo Enter your name; read; echo Hi ${REPLY}");
+console.log((await native.read()).value[0]);
+native.write("John Doe\n");
+for await ([msg] of native) {
+	console.log(msg);
+}
+console.log("===Closed===");
+```
+
+### Using callbacks
+Reading using callbacks.
+
+```js
+await new Native("ls", function (data) {
+	if (data.done) return;
+	console.log(data.msg);
+});
+```
+
+### Process ID
+Getting the processes ID (pid).
+
+```js
+const native = await new Native("ping 127.0.0.1");
+console.log(native.pid);
+```
+
+### Close process
+Close an active native process.
+
+```js
+const native = await new Native("ping 127.0.0.1");
+native.close();
+```
