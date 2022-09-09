@@ -296,6 +296,7 @@ webview_t createWebview(const char* fileName) {
 	webview_bind(w, "_jsToNative_close", native_close, w);
 	webview_init(w, \
 		"function Native(cmd, callback) {\n"
+		"	this.pid = null;\n"
 		"	this.closed = false;\n"
 		"	this.fds = null;\n"
 		"	this.callback = callback;\n"
@@ -321,7 +322,7 @@ webview_t createWebview(const char* fileName) {
 		"	const callback = native.callback;\n"
 		"	if (callback != null) callback(data);\n"
 		"	if (data.done) {\n"
-		"		Native._table[id] = null;\n"
+		"		delete Native._table[id];\n"
 		"		native.closed = true;\n"
 		"	}\n"
 		"};\n"
