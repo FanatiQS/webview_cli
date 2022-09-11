@@ -271,7 +271,7 @@ char* readFile(const char* filePath) {
 	rewind(file);
 
 	// Allocates buffer
-	char* buf = (char*)malloc(len);
+	char* buf = (char*)malloc(len + 1);
 	if (buf == NULL) {
 		fclose(file);
 		return NULL;
@@ -284,6 +284,7 @@ char* readFile(const char* filePath) {
 		free(buf);
 		return NULL;
 	}
+	buf[readLen] = '\0';
 
 	// Closes the file before returning the buffer
 	fclose(file);
