@@ -136,6 +136,7 @@ void native_open(const char *seq, const char *req, void *arg) {
 			closeAll(fds_in, fds_out, fds_err);
 			JS_REJECT(w, seq, "Failed to fork process");
 			DEBUG_PRINTF("Failed to fork process\n");
+			return;
 		}
 		// Runs system call in child process with standard pipes piped to parent process
 		case 0: {
@@ -156,30 +157,27 @@ void native_open(const char *seq, const char *req, void *arg) {
 			system(cmd.c_str());
 			exit(EXIT_SUCCESS);
 		}
-		// Reads standard pipes from child process and sends it to javascript
-		default: {
-			// Closes child side of pipes for parent
-			closeSide(fds_in, fds_out, fds_err, 1);
-
-			DEBUG_PRINTF("Created process %d with fds: %d %d %d\n", pid, fds_in[1], fds_out[0], fds_err[0]);
-
-			// Reads childs redirected standard pipes in threads to send to javascript
-			std::thread t1(&thread_pipe, w, fds_out[0], STDOUT_FILENO, fds_in[1], fds_out[0], fds_err[0]);
-			std::thread t2(&thread_pipe, w, fds_err[0], STDERR_FILENO, fds_in[1], fds_out[0], fds_err[0]);
-			t1.detach();
-			t2.detach();
-
-			// Resolves javascript promise with pipe file descriptors
-			std::string str = "{\"fds\":[" +
-				std::to_string(fds_in[1]) + "," +
-				std::to_string(fds_out[0]) + "," +
-				std::to_string(fds_err[0]) + "],\"pid\":" +
-				std::to_string(pid) + "}";
-			webview_return(w, seq, 0, str.c_str());
-
-			break;
-		}
 	}
+
+	// Closes child side of pipes for parent
+	closeSide(fds_in, fds_out, fds_err, 1);
+
+	// Debug prints pipes file descriptors and forked process id
+	DEBUG_PRINTF("Created process %d with fds: %d %d %d\n", pid, fds_in[1], fds_out[0], fds_err[0]);
+
+	// Reads childs redirected standard pipes in threads to send to javascript
+	std::thread t1(&thread_pipe, w, fds_out[0], STDOUT_FILENO, fds_in[1], fds_out[0], fds_err[0]);
+	std::thread t2(&thread_pipe, w, fds_err[0], STDERR_FILENO, fds_in[1], fds_out[0], fds_err[0]);
+	t1.detach();
+	t2.detach();
+
+	// Resolves javascript promise with pipe file descriptors
+	std::string str = "{\"fds\":[" +
+		std::to_string(fds_in[1]) + "," +
+		std::to_string(fds_out[0]) + "," +
+		std::to_string(fds_err[0]) + "],\"pid\":" +
+		std::to_string(pid) + "}";
+	webview_return(w, seq, 0, str.c_str());
 }
 
 // Writes data to an active system command
