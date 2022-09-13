@@ -12,10 +12,6 @@
 
 
 
-const char* json_parse(const char* str, const char* key, int index) {
-	return webview::detail::json_parse(str, key, index).c_str();
-}
-
 int json_parse_int(const char* str, const char* key, int index) {
 	return atoi(webview::detail::json_parse(str, key, index).c_str());
 }
@@ -358,12 +354,12 @@ webview_t createWebview(const char* fileName) {
 	char* conf = readFile("./config.json");
 
 	// Sets webview window title based on config or executable file name
-	const char* windowTitle;
+	std::string windowTitle;
 	if (
 		conf != NULL &&
-		(strlen(windowTitle = json_parse(conf, "title", 0)) != 0)
+		((windowTitle = webview::detail::json_parse(conf, "title", 0)).length() != 0)
 	) {
-		webview_set_title(w, windowTitle);
+		webview_set_title(w, windowTitle.c_str());
 	}
 	else {
 		webview_set_title(w, fileName);
@@ -386,7 +382,7 @@ webview_t createWebview(const char* fileName) {
 	// Loads html from file
 	char* html;
 	if (
-		(conf != NULL && ((html = readFile(json_parse(conf, "path", 0))) != NULL)) ||
+		(conf != NULL && ((html = readFile(webview::detail::json_parse(conf, "path", 0).c_str())) != NULL)) ||
 		((html = readFile((std::string(fileName) + ".html").c_str())) != NULL) ||
 		((html = readFile("index.html")) != NULL)
 	) {
