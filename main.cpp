@@ -242,7 +242,10 @@ void native_close(const char *seq, const char *req, void *arg) {
 	// Rejects javascript promise if any close call failed
 	if (fd_in_closed == -1 || fd_out_closed == -1 || fd_err_closed == -1) {
 		JS_REJECT(w, seq, "Failed to close one or more pipes");
-		DEBUG_PRINTF("Failed to close one or more pipes: %d, %d, %d\n", fd_in_closed, fd_out_closed, fd_err_closed);
+		DEBUG_PRINTF(
+			"Failed to close one or more pipes: %d, %d, %d %s\n",
+			fd_in_closed, fd_out_closed, fd_err_closed, strerror(errno)
+		);
 		return;
 	}
 
