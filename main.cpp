@@ -299,7 +299,9 @@ webview_t createWebview(const char* fileName) {
 	webview_bind(w, "_jsToNative_write", native_write, w);
 	webview_bind(w, "_jsToNative_close", native_close, w);
 	webview_init(w, \
+		"'use strict';\n"
 		"function Native(cmd, callback) {\n"
+		"	if (this == null) return new Native(...arguments);\n"
 		"	this.pid = null;\n"
 		"	this.closed = false;\n"
 		"	this.fds = null;\n"
