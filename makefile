@@ -6,10 +6,12 @@ PATH_DEBUG := $(NAME)_debug
 PLATFORM_RELEASE = $(PATH_RELEASE)
 PLATFORM_DEBUG = $(PATH_DEBUG)
 
+PATH_WEBVIEW = ./webview.h
+
 CC = g++ --std=c++11 main.cpp
 CC_RELEASE = $(CC) -O3
 CC_DEBUG = $(CC) -g -Wall -pedantic -DDEBUG
-CC_FILES = webview.h main.cpp
+CC_FILES = $(PATH_WEBVIEW) main.cpp
 
 MAC_APP := $(NAME).app
 MAC_PLIST = $(MAC_APP)/Info.plist
@@ -33,8 +35,8 @@ debug: ${PLATFORM_DEBUG}
 
 
 
-webview.h:
-	curl -sSLo "./webview.h" "https://raw.githubusercontent.com/webview/webview/master/webview.h"
+${PATH_WEBVIEW}:
+	curl -sSLo $(PATH_WEBVIEW) "https://raw.githubusercontent.com/webview/webview/master/webview.h"
 
 ${PATH_DEBUG}: $(CC_FILES)
 	${CC_DEBUG} ${PLATFORM_FLAGS} -o ${PATH_DEBUG}
