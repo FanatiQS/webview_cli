@@ -1,6 +1,7 @@
 #include <stdlib.h> // STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, system, NULL, malloc, exit, EXIT_FAILURE, EXIT_SUCCESS, atoi, free
-#include <stdio.h> // printf, FILE, fopen, fseek, fclose, ftell, rewind, fread
-#include <string.h> // strlen
+#include <stdio.h> // printf, FILE, fopen, fseek, fclose, ftell, rewind, fread, fflush, stdout
+#include <string.h> // strlen, strerror
+#include <errno.h> // errno
 
 #include <unistd.h> // write, close, read, pipe, fork, dup2, chdir, pid_t, isatty
 #include <libgen.h> // dirname, basename
