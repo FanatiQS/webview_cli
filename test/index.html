@@ -1,0 +1,460 @@
+<div id="status">Running tests...</div>
+<div>Encountered errors: <span id="errors">0</span>/<span id="total">0</span></div>
+<hr>
+<script>
+
+// This function should not be required and is used to wait extra between opening and closing process
+function extraWait() {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+
+
+const CMD_STDOUT = "echo test";
+const CMD_STDERR = ">&2 echo test";
+const CMD_ECHO = "read; echo ${REPLY}";
+const CMD_DUMMY = CMD_STDOUT;
+const CMD_WAIT = CMD_ECHO;
+
+
+
+let encouteredErrors = 0;
+const allTests = [];
+
+
+
+function Test(callback) {
+	this.node = document.createElement("div");
+	this.callback = callback;
+	this.type = null;
+	this.value = null;
+
+	document.body.appendChild(this.node);
+
+	allTests.push(this);
+	document.querySelector("#total").innerText = allTests.length;
+
+	this.test = this.callback().then((value) => {
+		if (this.type !== "return") {
+			this.print(false, `Expected ${this.type} but got a return: ${value}`);
+			console.log("type != return", value);
+		}
+		else if (this.value !== value) {
+			this.print(false, `Missmatching return values: ${this.value}, ${value}`);
+			console.log("type == return && value != value", value);
+		}
+		else {
+			this.print(true, "Got matching return value");
+		}
+	}).catch((err) => {
+		if (this.type !== "error") {
+			this.print(false, `Expected ${this.type} but got an error: ${err.message}`);
+			console.log("type != error", err);
+		}
+		else if (this.value !== err.message) {
+			this.print(false, `Incorrect error: ${err.message}`);
+			console.log("type == error && value != value", err);
+		}
+		else {
+			this.print(true, "Got correct error");
+		}
+	});
+}
+
+Test.prototype.print = function (success, msg) {
+	this.node.innerText = `${(success) ? "SUCCESS" : "FAILURE"} ${this.callback.name}: ${msg}`;
+	if (success === false) {
+		document.querySelector("#errors").innerText = ++encouteredErrors;
+	}
+}
+
+Test.prototype.expectReturn = function (value) {
+	this.type = "return";
+	this.value = value;
+};
+
+Test.prototype.expectError = function (err) {
+	this.type = "error";
+	this.value = err;
+};
+
+function TEST(callback) {
+	new Test(callback);
+}
+
+
+
+const invalidFds = [ "___999___", null, true, false, [ 999 ], { key: 999 }, 0 ];
+const validFds = [ 999, "999", "   999   ", "999___", 999.999, 999.001 ];
+
+
+
+// Closes pipes without arguments
+TEST(async function close_without_arguments() {
+	this.expectError("Invalid arguments");
+	await _jsToNative_close();
+});
+
+// Closes pipes with invalid arguments
+for (let i = 0; i < invalidFds.length; i++) {
+	const fd = invalidFds[i];
+	TEST(async function close_with_non_integer_argument_at_0() {
+		this.expectError("Invalid arguments");
+		await _jsToNative_close(fd, 999, 999);
+	});
+	TEST(async function close_with_non_integer_argument_at_1() {
+		this.expectError("Invalid arguments");
+		await _jsToNative_close(999, fd, 999);
+	});
+	TEST(async function close_with_non_integer_argument_at_2() {
+		this.expectError("Invalid arguments");
+		await _jsToNative_close(999, 999, fd);
+	});
+}
+
+// Closes pipes with valid arguments but invalid file descriptors
+for (let i = 0; i < validFds.length; i++) {
+	const fd = validFds[i];
+	TEST(async function close_with_non_pipe_argument_at_0() {
+		this.expectError("Failed to close one or more pipes");
+		await _jsToNative_close(fd, 999, 999);
+	});
+	TEST(async function close_with_non_pipe_argument_at_1() {
+		this.expectError("Failed to close one or more pipes");
+		await _jsToNative_close(999, fd, 999);
+	});
+	TEST(async function close_with_non_pipe_argument_at_2() {
+		this.expectError("Failed to close one or more pipes");
+		await _jsToNative_close(999, 999, fd);
+	});
+}
+
+
+
+// Writes wihtout arguments
+TEST(async function write_without_arguments() {
+	this.expectError("Invalid argument: fd");
+	await _jsToNative_write();
+});
+
+// Writes to pipe with invalid file descriptor argument
+for (let i = 0; i < invalidFds.length; i++) {
+	const fd = invalidFds[i];
+	TEST(async function write_with_non_pipe_fd_argument() {
+		this.expectError("Invalid argument: fd");
+		await _jsToNative_write(fd);
+	});
+}
+
+// Writes to pipe with valid file descriptor argument
+for (let i = 0; i < validFds.length; i++) {
+	const fd = validFds[i];
+	TEST(async function write_with_non_integer_fd_argument() {
+		this.expectError("Invalid argument: msg");
+		await _jsToNative_write(fd);
+	});
+}
+
+// Writes empty message
+TEST(async function write_with_empty_msg_argument() {
+	this.expectError("Invalid argument: msg");
+	await _jsToNative_write(1, "");
+});
+
+// Writes message to invalid pipe
+TEST(async function write_to_invalid_pipe() {
+	this.expectError("Failed to write data");
+	await _jsToNative_write(999, "This should not be printed");
+});
+
+// Writes non string messages
+const msgArgTypes = [ { key: "123" }, [ 1, 2, 3 ], 99, true, false, null, ()=>{} ];
+const msgArgTypesStrings = [ "{\"key\":\"123\"}\n", "[1,2,3]\n", "99\n", "true\n", "false\n", "null\n", "null\n"];
+for (let i = 0; i < msgArgTypes.length; i++) {
+	const msg = msgArgTypes[i];
+	const cmp = msgArgTypesStrings[i];
+	TEST(async function write_with_non_string_msg_argument() {
+		this.expectReturn(true);
+		const native = await new Native(CMD_ECHO);
+		await native.write(msg);
+		await native.write("\n");
+		const response = await native.read();
+		if (response.value[0] !== cmp) {
+			console.log(i, response.value[0], cmp);
+			throw new Error(`Value did not match ${response.value[0]}, ${msg}`);
+		}
+		return true;
+	});
+}
+
+
+
+// Opens native process with empty string
+TEST(async function open_with_empty_argument() {
+	this.expectError("No command argument");
+	const native = await new Native("");
+});
+
+// Opens native process without argument
+TEST(async function open_without_argument() {
+	this.expectReturn(true);
+	const native = await new Native();
+	return true;
+});
+
+// Opens native process with non string argument
+TEST(async function open_with_non_string_argument() {
+	this.expectReturn(true);
+	const native = await new Native({key:123});
+	return true;
+});
+
+
+
+// Opens native process successfully with normal constructor
+TEST(async function open_success_constructor() {
+	this.expectReturn(true);
+	let native = new Native(CMD_DUMMY);
+	if (!(native instanceof Promise)) {
+		throw new Error("Return value from Native constructor is not a promise");
+	}
+	native = await native;
+	if (!(native instanceof Native)) {
+		throw new Error("Native constructor did not return instance of Native");
+	}
+	if (typeof native.pid !== "number") {
+		throw new Error("Local value for 'pid' was not set correctly: " + typeof native.pid);
+	}
+	if (
+		native.fds.length !== 3 ||
+		typeof native.fds[0] !== "number" ||
+		typeof native.fds[1] !== "number" ||
+		typeof native.fds[2] !== "number"
+	) {
+		throw new Error("Local value for 'fds' was not set correctly: " + JSON.stringify(native.fds));
+	}
+	if (native.closed !== false) {
+		throw new Error("Local value for 'closed' was not set correctly: " + JSON.stringify(native.closed));
+	}
+	return true;
+});
+
+// Opens native process with function
+TEST(async function open_success_function() {
+	this.expectReturn(true);
+	const native = await Native(CMD_DUMMY);
+	if (!(native instanceof Native)) {
+		throw new Error("Using constructor with function call did not return instance of Native");
+	}
+	return true;
+});
+
+// Writes successfully to native process
+TEST(async function write_success() {
+	this.expectReturn(true);
+	const str = "test\n";
+	const native = await new Native(CMD_ECHO);
+	const response1 = await native.write(str);
+	if (response1 !== undefined) {
+		throw new Error("Expected return value from write to be empty: " + JSON.stringify(response1));
+	}
+	const response2 = await native.read();
+	if (!response2 || !response2.value || response2.value[0] !== str) {
+		throw new Error("Missmatching echo read and write: " + str + ", " + JSON.stringify(response2));
+	}
+	return true;
+});
+
+// Closes successfully native process
+TEST(async function close_success() {
+	this.expectReturn(true);
+	const native = await new Native(CMD_ECHO);
+	extraWait();
+	const response1 = await native.close();
+	if (response1 !== undefined) {
+		throw new Error("Response from close method is not undefined: " + JSON.stringify(response1));
+	}
+	if (native.closed !== false) {
+		throw new Error("Local closed value should have remained false: " + native.closed);
+	}
+	const response2 = await native.read();
+	if (!response2 || response2.done !== true) {
+		throw new Error("Did not close after close request: " + JSON.stringify(response2));
+	}
+	if (native.closed !== true) {
+		throw new Error("Local closed value should have been set to true: " + native.closed);
+	}
+	return true;
+});
+
+// Ensures exiting command closes native object
+TEST(async function native_close() {
+	this.expectReturn(true);
+	const native = await new Native(CMD_DUMMY);
+	if (!Native._table[native.fds[0]]) {
+		throw new Error("Native object was not added to table");
+	}
+	if (native.closed !== false) {
+		throw new Error("Closed too early: " + native.closed);
+	}
+	const response1 = await native.read();
+	if (!response1 || !response1.value || response1.value[0] !== "test\n") {
+		throw new Error("Missmatching echo read: test, " + JSON.stringify(response1));
+	}
+	const response2 = await native.read();
+	if (!response2 || response2.done !== true) {
+		throw new Error("Did not close after write: " + JSON.stringify(response2));
+	}
+	if (native.closed !== true) {
+		throw new Error("Did not set local close value: " + native.closed);
+	}
+	if (Native._table[native.fds[0]]) {
+		throw new Error("Native object was not removed from table");
+	}
+	return true;
+});
+
+// Tests async iterator
+TEST(async function async_iterator() {
+	this.expectReturn(true);
+	for await ([msg, src] of await new Native(CMD_DUMMY)) {
+		if (msg !== "test\n") {
+			throw new Error("Missmatch data from dummy command: " + msg);
+		}
+	}
+	return true;
+});
+
+
+
+// Writes quoted message
+const quoteTypes = [ '"1", "2", "3"\n', "'1', '2', '3'\n", /*"`1`, `2`, `3`\n"*/ ];
+for (let i = 0; i < quoteTypes.length; i++) {
+	TEST(async function write_with_quoted_msg_argument() {
+		this.expectReturn(true);
+		const str = quoteTypes[i];
+		const native = await new Native(CMD_ECHO);
+		native.write(str);
+		const response = await native.read();
+		if (!response || !response.value || response.value[0] !== str) {
+			throw new Error("No match for returned: " + JSON.stringify(response));
+		}
+		return true;
+	});
+}
+
+// Tries to write before open
+TEST(async function write_before_open() {
+	this.expectReturn(true);
+	const native = new Native(CMD_DUMMY);
+	try {
+		native.write("test\n");
+		return false;
+	}
+	catch (err) {
+		return true;
+	}
+});
+
+// Tries to close before open
+TEST(async function close_before_open() {
+	this.expectReturn(true);
+	const native = new Native(CMD_DUMMY);
+	try {
+		native.close();
+		return false;
+	}
+	catch (err) {
+		return true;
+	}
+});
+
+// Tries to write after close
+TEST(async function write_after_close() {
+	this.expectError("Command has closed its pipe");
+	const native = await new Native(CMD_DUMMY);
+	await extraWait();
+	await native.close();
+	native.write("test\n");
+});
+
+// Tries to close after close
+TEST(async function close_after_close() {
+	this.expectError("Command has closed its pipe");
+	const native = await new Native(CMD_WAIT);
+	await extraWait();
+	await native.close();
+	native.close();
+});
+
+
+
+// Tests stdout source
+TEST(async function read_src_stdout() {
+	this.expectReturn(true);
+	for await ([msg, src] of await new Native(CMD_DUMMY)) {
+		if (msg !== "test\n") {
+			throw new Error("Missmatch data from dummy command: " + msg);
+		}
+		if (src !== 1) {
+			throw new Error("Data did not come from stdout: " + src);
+		}
+	}
+	return true;
+});
+
+// Tests stderr source
+TEST(async function read_src_stderr() {
+	this.expectReturn(true);
+	for await ([msg, src] of await new Native(CMD_STDERR)) {
+		if (msg !== "test\n") {
+			throw new Error("Missmatch data from dummy command: " + msg);
+		}
+		if (src !== 2) {
+			throw new Error("Data did not come from stderr: " + src);
+		}
+	}
+	return true;
+});
+
+
+
+// Ensures strict mode is not globally enabled
+TEST(async function strict_mode() {
+	this.expectReturn(true);
+	(function test() {
+		if (this !== window) {
+			throw new Error("Strict mode is enabled");
+		}
+	})();
+	return true;
+});
+
+
+
+// Tests write split up into parts
+TEST(async function write_chunks() {
+	this.expectReturn(true);
+	const native = await new Native(CMD_ECHO);
+	await native.write(1);
+	await native.write(2);
+	await native.write(3);
+	await native.write("\n");
+	const response = await native.read();
+	if (!response || !response.value || response.value[0] == null) {
+		throw new Error("Unable to read from echo: " + JSON.stringify(response));
+	}
+	if (response.value[0] !== "123\n") {
+		throw new Error("Did not receive expected response: " + JSON.stringify(response));
+	}
+	return true;
+});
+
+
+
+// Displays test results in HTML
+Promise.all(allTests.map((test) => test.test)).then(() => {
+	document.querySelector("#status").innerText = 'Completed';
+});
+
+</script>
