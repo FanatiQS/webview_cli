@@ -44,7 +44,7 @@ ${PATH_DEBUG}: $(CC_FILES)
 ${PATH_RELEASE}: $(CC_FILES)
 	${CC_RELEASE} ${PLATFORM_FLAGS} -o ${PATH_RELEASE}
 
-${MAC_PATH}: $(CC_FILES)
+${MAC_PLIST}:
 	mkdir $(MAC_APP)
 	echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> $(MAC_PLIST)
 	echo "<plist version=\"1.0\">" >> $(MAC_PLIST)
@@ -55,4 +55,6 @@ ${MAC_PATH}: $(CC_FILES)
 	echo "	<true/>" >> $(MAC_PLIST)
 	echo "</dict>" >> $(MAC_PLIST)
 	echo "</plist>" >> $(MAC_PLIST)
+
+${MAC_PATH}: $(CC_FILES) $(MAC_PLIST)
 	$(CC_RELEASE) $(MAC_FLAGS) -o $(MAC_PATH)
